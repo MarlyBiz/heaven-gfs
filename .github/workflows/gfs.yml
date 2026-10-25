@@ -1,0 +1,30 @@
+name: GFS fields for Heaven on Earth
+on:
+  schedule:
+    - cron: '50 */3 * * *'   # every 3 h; picks the newest GFS cycle with f072 published (~4 h after 00/06/12/18Z)
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency: { group: pages, cancel-in-progress: false }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: { name: github-pages, url: '${{ steps.deploy.outputs.page_url }}' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12', cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python gfs.py
+        env: { OUT: site, HOURS: '72', STEP: '3' }
+      - run: |
+          cp index.html site/ && touch site/.nojekyll
+          du -sh site && ls site | wc -l
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site }
+      - id: deploy
+        uses: actions/deploy-pages@v4
